@@ -8,9 +8,11 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <sys/time.h>
+#include <sys/wait.h>
 
 #include "socket.h"
 #include "socketsignal.h"
+#include "protocol.h"
 
 // This is a global file descriptor for the socket 
 // which can either be a server or accepted client socket.
@@ -24,34 +26,9 @@ typedef struct {
 } User;
 
 /**
- * Validates that a received message matches the expected status.
- * 
- * @param fd The file descriptor to receive the message from.
- * @param msg Pointer to the Message structure to store the received message.
- * @param status The expected status byte of the message.
- * @return 1 if the message is valid and matches the expected status, 0 otherwise
- */
-int validateMessage(Message* msg, uint8_t status);
-
-int clientResponse(Message* msg, uint8_t expected_status){
-  if(recvMessage(fd, msg) < 0){
-    printf("[Server]: Error receiving message from client\n");
-    return 0;
-  }
-
-  if(msg->status != expected_status){
-    printf("[Server]: Unexpected message status\n");
-    return 0;
-  }
-
-  return 1;
-}
-
-/**
  * Handles the authentication process for a connected client.
- * @return The index of the authenticated user in the users array, or -1 on failure.
  */
-int authenticateUser();
+void authenticateUser(User* user);
 
 /**
  * Handles incoming messages from a connected client.
@@ -60,17 +37,28 @@ int authenticateUser();
 void handleUserMessage(User* user);
 
 /**
- * Reverses the given data string in place.
- * 
- * @param data The string data to be reversed.
- */
-void reverse(char* data);
-
-/**
  * Cleanup function to be called at program exit.
  * Closes the global socket file descriptor if it is open.
  */
 void cleanup();
+
+/**
+ * Check if the given status byte has the specified flag set.
+ * 
+ * @param status The status byte to check.
+ * @param flag The flag to check for.
+ * @return 1 if the flag is set, 0 otherwise.
+ */
+int hasFlag(uint8_t status, uint8_t flag);
+
+/**
+ * Receive a message from the server and check for expected flags.
+ * Exits the program if an error occurs or unexpected flags are received.
+ * 
+ * @param msg Pointer to the Message structure to populate.
+ * @param expect_flags The expected flags in the message status.
+ */
+int response(Message* msg, int expect_flags);
 
 // Predefined users for authentication testing. 
 // This variable is only visible within this file.
@@ -118,6 +106,9 @@ int main(){
     else if(pid > 0){
       printf("[Server]: Accepted new client connection\n");
       close(client_fd);
+
+      while(waitpid(-1, NULL, WNOHANG) > 0);
+
       continue;
     }
     // Child process handles the client socket
@@ -126,118 +117,199 @@ int main(){
       fd = client_fd;
 
       struct timeval timeout;
-      timeout.tv_sec = 4; // 4 seconds timeout
+      timeout.tv_sec = 100;
 
-      // Set receive timeout on the client socket to prevent user from sending incorrect data length.
-      // This ensures that recv calls will timeout if no data is received within the specified time.
       setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-
+      
       break;
     }
   }
 
   if(pid == 0){
-    int index = authenticateUser();
+    User user;
 
-    if(index == -1){
-      cleanup();
-      _exit(EXIT_FAILURE);
-    }
-    else{
-      handleUserMessage(&users[index]);
+    authenticateUser(&user);
+    handleUserMessage(&user);
       
-      cleanup();
-      _exit(EXIT_SUCCESS);
-    }
+    cleanup();
+    _exit(EXIT_SUCCESS);
   }
 
   return 0;
 }
 
-int authenticateUser(){
+void authenticateUser(User* user){
   Message msg;
   char username[BUFFER_SIZE];
   char password[BUFFER_SIZE];
 
-  recvMessage(fd, &msg);
+  if(!response(&msg, REQ_OK | NAME)) cleanup(), _exit(EXIT_FAILURE);
+  sendMessage(fd, RES_OK | NAME, NULL);
 
-  if(msg.status == (REQUEST_STATUS | USERNAME)){
-    sendMessage(fd, RESPONSE_STATUS | SUCCESS_STATUS, "");
-    strncpy(username, msg.data, ntohs(msg.length));
-  }
-  else{
-    sendMessage(fd, RESPONSE_STATUS | ERROR_STATUS, "Error receiving username");
-    return -1;
-  }
+  strncpy(username, msg.data, ntohs(msg.length));
 
-  recvMessage(fd, &msg);
+  if(!response(&msg, REQ_OK | PASSWORD)) cleanup(), _exit(EXIT_FAILURE);
+  sendMessage(fd, RES_OK | PASSWORD, NULL);
 
-  if(msg.status == (REQUEST_STATUS | PASSWORD)){
-    sendMessage(fd, RESPONSE_STATUS | SUCCESS_STATUS, "");
-    strncpy(password, msg.data, ntohs(msg.length));
-  }
-  else{
-    sendMessage(fd, RESPONSE_STATUS | ERROR_STATUS, "Error receiving password");
-    return -1;
-  }
+  strncpy(password, msg.data, ntohs(msg.length));
 
   for(int i = 0; users[i].name != NULL; i++){
     if(
       strcmp(users[i].name, username) == 0 &&
       strcmp(users[i].password, password) == 0
     ){
+      user->name = users[i].name;
+      
       printf("[Server]: User '%s' authenticated successfully\n", username);
-      sendMessage(fd, RESPONSE_STATUS | SUCCESS_STATUS, "You are now authenticated");
-      return i;
+      sendMessage(fd, RES_OK | AUTH, "You are now authenticated");
+      return;
     }
   }
 
   printf("[Server]: Authentication failed for user '%s'\n", username);
-  sendMessage(fd, RESPONSE_STATUS | ERROR_STATUS, "Invalid username or password");
-  
-  return -1;
+  sendMessage(fd, RES_ERR | AUTH, "Invalid username or password");
+  cleanup();
+  _exit(EXIT_FAILURE);
+
+  return;
 }
 
-void handleUserMessage(User* user){
-  Message msg;
+void handleUserMessage(User* user) {
+  int parent_pipe[2];
+  int shell_pipe[2];
+  pid_t shell_pid;
 
-  while(1){
-    if(recvMessage(fd, &msg) < 0){
-      printf("[user:%s] Error receiving message or connection closed\n", user->name);
-      break;
+  if(pipe(parent_pipe) < 0 || pipe(shell_pipe) < 0){
+    printf("[Server]: Unable to create pipes for shell communication\n");
+    sendMessage(fd, RES_ERR | DATA, "Unable to create pipes");
+    return;
+  }
+
+  shell_pid = fork();
+
+  if(shell_pid < 0){
+    printf("[Server]: Unable to fork shell process\n");
+    sendMessage(fd, RES_ERR | DATA, "Unable to fork shell process");
+    return;
+  }
+  // Child shell process
+  else if(shell_pid == 0){
+    // Disable unused pipe ends
+    close(parent_pipe[0]);
+    close(shell_pipe[1]);
+
+    // Redirect stdin, stdout, stderr to the appropriate pipe ends
+    dup2(shell_pipe[0], STDIN_FILENO);
+    dup2(parent_pipe[1], STDOUT_FILENO);
+    dup2(parent_pipe[1], STDERR_FILENO);
+
+    // Close the duplicated pipe ends since stdout, stdin, stderr now use them
+    close(shell_pipe[0]);
+    close(parent_pipe[1]);
+
+    execl("./unix-shell", "./unix-shell", "-server", NULL);
+  
+    // If execl returns, an error occurred. Time to bail.
+    perror("execl");
+    fflush(stderr);
+    _exit(EXIT_FAILURE);
+  }
+  // Parent process
+  else{
+    // Disable unused pipe ends
+    close(parent_pipe[1]);
+    close(shell_pipe[0]);
+
+    Message msg;
+    ssize_t bytes;
+
+    // When the shell starts, it may output a prompt.
+    while((bytes = read(parent_pipe[0], msg.data, BUFFER_SIZE - 1)) > 0){
+      if(strstr(msg.data, "[PROMPT]")) break;
     }
 
-    if(msg.status == (REQUEST_STATUS | CLOSE)){
-      printf("[user:%s] Close request received\n", user->name);
-      break;
-    }
-    else if(msg.status == (REQUEST_STATUS | DATA)){
-      printf("[user:%s] %s\n", user->name, msg.data);
-      
-      reverse(msg.data);
+    // After the initial prompt, that's when user commands can be processed. 
+    while(1){
+      size_t total = 0;
 
-      if(sendMessage(fd, RESPONSE_STATUS | SUCCESS_STATUS, msg.data) < 0){
-        printf("Error sending message back to client\n");
+      if(!response(&msg, REQ_OK)) break;
+
+      if(hasFlag(msg.status, CLOSE)){
+        printf("[Server]: User '%s' disconnected the session\n", user->name);
         break;
       }
-    }
-  }
-}
 
-void reverse(char* data){
-  size_t len = strlen(data);
-  for(size_t i = 0; i < len / 2; i++){
-    char temp = data[i];
-    data[i] = data[len - i - 1];
-    data[len - i - 1] = temp;
+      printf("[user:%s]: %s\n", user->name, msg.data);
+
+      int result;
+
+      result = write(shell_pipe[1], msg.data, ntohs(msg.length));
+      result+= write(shell_pipe[1], "\n", 1);
+
+      if(result < 0){
+        printf("[Server]: Failed to write to shell\n");
+        sendMessage(fd, RES_ERR | DATA, "Failed to write to shell");
+        break;
+      }
+
+      memset(msg.data, 0, sizeof(msg.data));
+      // Read from the shell until the next prompt is displayed.
+      while((bytes = read(parent_pipe[0], msg.data + total, BUFFER_SIZE - total - 1)) > 0){
+        total+= bytes;
+        msg.data[total] = '\0';
+
+        if(strstr(msg.data, "[PROMPT]")) break;
+      }
+
+      char *occurence = strstr(msg.data, "[PROMPT]");
+
+      if(occurence) *occurence = '\0';
+
+      sendMessage(fd, RES_OK | DATA, msg.data);
+    }
+  
+    kill(shell_pid, SIGTERM);
+    waitpid(shell_pid, NULL, 0);
   }
 }
 
 void cleanup(){
-  printf("Cleaning up socket before exit...\n");
+  printf("\nCleaning up socket before exit...\n");
 
   if(fd >= 0){
     close(fd);
     fd = -1;
   }
+}
+
+int hasFlag(uint8_t status, uint8_t flag){
+  return (status & flag) == flag;
+}
+
+int response(Message* msg, int expect_flags){
+  int status = recvMessage(fd, msg);
+
+  // Check if the message was received successfully
+  if(status != MSG_OK){
+    printf("[Client]: Unable to reach the client\n");
+    return 0;
+  }
+
+  // Check for error flag in the message status
+  if(hasFlag(msg->status, ERR_BIT)){
+    printf("[Client]: %s\n", msg->data);
+    // cleanup();
+    // _exit(EXIT_FAILURE);
+    return 0;
+  }
+
+  // Check for unexpected flags in the message status
+  if(!hasFlag(msg->status, expect_flags)){
+    printf("[Client]: Unexpected response from server\n");
+    // cleanup();
+    // _exit(EXIT_FAILURE);
+    return 0;
+  }
+  
+  return 1;
 }
