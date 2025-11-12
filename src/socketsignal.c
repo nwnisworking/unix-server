@@ -3,12 +3,14 @@
 // This function handles termination signals by closing the global file descriptor.
 // Since it is not exposed outside this file, it is declared as static.
 static void signalHandler(){
-  printf("\nTermination signal received. Closing socket\n");
+  kill(0, SIGTERM);
 
   if(fd != -1){
     close(fd);
     fd = -1;
   }
+
+  while(waitpid(-1, NULL, WNOHANG) > 0);
 
   _exit(0);
 }

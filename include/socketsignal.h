@@ -6,6 +6,8 @@
  * @brief Provides functions for installing and resetting signal handlers for socket operations.
  */
 
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <signal.h>
 #include <stdio.h>
 #include <unistd.h>
