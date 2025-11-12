@@ -11,6 +11,8 @@
     "termios.h": "c",
     "signal.h": "c",
     "socket.h": "c",
-    "cstdlib": "c"
+    "cstdlib": "c",
+    "protocol.h": "c",
+    "socketsignal.h": "c"
   }
 }
