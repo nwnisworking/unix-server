@@ -12,6 +12,8 @@ static void signalHandler(){
 
   while(waitpid(-1, NULL, WNOHANG) > 0);
 
+  printf("\n[Server]: Caught termination signal, shutting down gracefully...\n");
+
   _exit(0);
 }
 
