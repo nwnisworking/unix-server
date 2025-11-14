@@ -1,0 +1,6 @@
+Script started on 2025-11-15 01:49:02+08:00 [TERM="xterm" TTY="/dev/pts/1" COLUMNS="120" LINES="30"]
+# ./connection_terminated
+[Assertion passed]: Connection terminated successfully for connection_terminated.c
+# exit
+
+Script done on 2025-11-15 01:49:14+08:00 [COMMAND_EXIT_CODE="0"]

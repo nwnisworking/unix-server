@@ -1,0 +1,8 @@
+Script started on 2025-11-15 01:45:02+08:00 [TERM="xterm" TTY="/dev/pts/1" COLUMNS="120" LINES="30"]
+# ./close_command
+Status: 0x85, Length: 17, Data: 'Connection closed'
+Flags set: RES_BIT OK_BIT NAME DATA CLOSE
+[Assertion passed]: Connection closed successfully for close_command.c
+# exit
+
+Script done on 2025-11-15 01:45:12+08:00 [COMMAND_EXIT_CODE="0"]

@@ -1,0 +1,10 @@
+Script started on 2025-11-15 03:42:51+08:00 [TERM="xterm" TTY="/dev/pts/8" COLUMNS="76" LINES="41"]
+# ./timeout_while_login
+Status: 0x81, Length: 0, Data: ''
+Flags set: RES_BIT OK_BIT NAME
+Status: 0xC0, Length: 22, Data: 'Error message received'
+Flags set: RES_BIT ERR_BIT
+[Assertion passed]: Timeout while waiting for login for timeout_while_login.c
+# exit
+
+Script done on 2025-11-15 03:44:37+08:00 [COMMAND_EXIT_CODE="0"]

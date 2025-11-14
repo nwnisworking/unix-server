@@ -1,0 +1,6 @@
+Script started on 2025-11-15 01:46:31+08:00 [TERM="xterm" TTY="/dev/pts/1" COLUMNS="120" LINES="30"]
+# ./connection_fail
+[Assertion passed]: Connection to port failed for connection_fail.c
+# ./exit
+
+Script done on 2025-11-15 01:46:38+08:00 [COMMAND_EXIT_CODE="0"]

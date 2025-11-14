@@ -1,0 +1,8 @@
+Script started on 2025-11-15 01:55:00+08:00 [TERM="xterm" TTY="/dev/pts/1" COLUMNS="76" LINES="41"]
+# ./execl_fail
+Status: 0xC4, Length: 22, Data: 'Shell execution failed'
+Flags set: RES_BIT ERR_BIT DATA
+[Assertion passed]: Unix-shell can't be found for execl_fail.c
+# exit
+
+Script done on 2025-11-15 01:55:13+08:00 [COMMAND_EXIT_CODE="0"]

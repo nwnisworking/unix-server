@@ -1,0 +1,8 @@
+Script started on 2025-11-15 02:00:04+08:00 [TERM="xterm" TTY="/dev/pts/1" COLUMNS="76" LINES="41"]
+# ./message_length_data_small
+Status: 0xC1, Length: 26, Data: 'Malformed message received'
+Flags set: RES_BIT ERR_BIT NAME
+[Assertion passed]: Malformed message data size smaller than declared size for message_length_data_small.c
+# exit
+
+Script done on 2025-11-15 02:00:10+08:00 [COMMAND_EXIT_CODE="0"]

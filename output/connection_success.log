@@ -1,0 +1,6 @@
+Script started on 2025-11-15 01:47:13+08:00 [TERM="xterm" TTY="/dev/pts/1" COLUMNS="120" LINES="30"]
+# ./connection_success
+[Assertion passed]: Connection to port succeeded for connection_success.c
+# exit
+
+Script done on 2025-11-15 01:47:21+08:00 [COMMAND_EXIT_CODE="0"]

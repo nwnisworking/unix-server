@@ -1,0 +1,8 @@
+Script started on 2025-11-15 02:00:42+08:00 [TERM="xterm" TTY="/dev/pts/1" COLUMNS="76" LINES="41"]
+# ./message_opcode_fail
+Status: 0xC2, Length: 19, Data: 'Unexpected response'
+Flags set: RES_BIT ERR_BIT PASSWORD
+[Assertion passed]: Unexpected opcode in request for message_opcode_fail.c
+# exit
+
+Script done on 2025-11-15 02:00:57+08:00 [COMMAND_EXIT_CODE="0"]

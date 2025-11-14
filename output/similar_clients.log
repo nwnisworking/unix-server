@@ -1,0 +1,6 @@
+Script started on 2025-11-15 02:01:58+08:00 [TERM="xterm" TTY="/dev/pts/1" COLUMNS="76" LINES="41"]
+# ./similar_clients
+[Assertion passed]: Similar client connections for similar_clients.c
+# exit
+
+Script done on 2025-11-15 02:02:21+08:00 [COMMAND_EXIT_CODE="0"]

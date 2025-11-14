@@ -1,0 +1,8 @@
+Script started on 2025-11-15 01:58:35+08:00 [TERM="xterm" TTY="/dev/pts/1" COLUMNS="76" LINES="41"]
+# ./message_length_data_big
+Status: 0x81, Length: 0, Data: ''
+Flags set: RES_BIT OK_BIT NAME
+[Assertion failed]: Malformed message data size larger than declared size for message_length_data_big.c
+# exit
+
+Script done on 2025-11-15 01:58:53+08:00 [COMMAND_EXIT_CODE="0"]
