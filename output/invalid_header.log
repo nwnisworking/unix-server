@@ -1,0 +1,8 @@
+Script started on 2025-11-15 05:54:07+08:00 [TERM="xterm" TTY="/dev/pts/14" COLUMNS="120" LINES="30"]
+# ./invalid_header
+Status: 0xC0, Length: 22, Data: 'Error message received'
+Flags set: RES_BIT ERR_BIT
+[Assertion passed]: Malformed header detected for invalid_header.c
+# exit
+
+Script done on 2025-11-15 05:54:56+08:00 [COMMAND_EXIT_CODE="0"]
