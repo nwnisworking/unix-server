@@ -33,6 +33,10 @@ int serverSocket(uint16_t port){
   addr.sin_addr.s_addr = INADDR_ANY;
   addr.sin_port = htons(port);
 
+  int opt = 1;
+  // Reuse the address to avoid "Address already in use" errors on restart
+  setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
   // Bind the socket to the specified port
   if(bind(fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) return -1;
 
@@ -139,6 +143,7 @@ int readAll(int fd, char* buffer, int size, ssize_t* received_bytes){
 
     *received_bytes += bytes;
   }
+
 
   return MSG_OK;
 }

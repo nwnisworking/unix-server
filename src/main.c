@@ -14,10 +14,9 @@
 #include "socketsignal.h"
 #include "protocol.h"
 
-// This is a global file descriptor for the socket 
+// This is a file descriptor for the socket 
 // which can either be a server or accepted client socket.
-// The purpose of this global variable is to allow signal handlers to close the socket gracefully.
-int fd = -1;
+static int fd = -1;
 
 // User structure containing name and password
 typedef struct {
@@ -41,6 +40,12 @@ void handleUserMessage(User* user);
  * Closes the global socket file descriptor if it is open.
  */
 void cleanup();
+
+/**
+ * Signal handler function to handle termination signals.
+ * Closes the global socket and terminates child processes gracefully.
+ */
+void signalHandler();
 
 /**
  * Check if the given status byte has the specified flag set.
@@ -81,7 +86,7 @@ int main(){
     exit(EXIT_FAILURE);
   }
 
-  installSignalHandler();
+  installSignalHandler(signalHandler);
 
   printf("[Server]: Listening on port %d\n", SERVER_PORT);
 
@@ -117,7 +122,7 @@ int main(){
       fd = client_fd;
 
       struct timeval timeout;
-      timeout.tv_sec = 100;
+      timeout.tv_sec = 30;
 
       setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
       
@@ -136,6 +141,21 @@ int main(){
   }
 
   return 0;
+}
+
+void signalHandler(){
+  kill(0, SIGTERM);
+
+  if(fd != -1){
+    close(fd);
+    fd = -1;
+  }
+
+  while(waitpid(-1, NULL, WNOHANG) > 0);
+
+  printf("\n[Server]: Caught termination signal, shutting down gracefully...\n");
+
+  _exit(0);
 }
 
 void authenticateUser(User* user){
@@ -222,15 +242,32 @@ void handleUserMessage(User* user) {
 
     Message msg;
     ssize_t bytes;
+    size_t total = 0;
+    char buffer[BUFFER_SIZE];
+    int exec_failed = 0;
 
     // When the shell starts, it may output a prompt.
-    while((bytes = read(parent_pipe[0], msg.data, BUFFER_SIZE - 1)) > 0){
-      if(strstr(msg.data, "[PROMPT]")) break;
+    while((bytes = read(parent_pipe[0], buffer + total, sizeof(buffer) - total - 1)) > 0){
+      total+= bytes;
+      buffer[total] = '\0';
+      if(strstr(buffer, "[PROMPT]")) break;
+      if(strstr(buffer, "execl")) {
+        exec_failed = 1;
+        break;
+      }
+    }
+
+    if(exec_failed){
+      printf("[Server]: Shell execution failed\n");
+      sendMessage(fd, RES_ERR | DATA, "Shell execution failed");
+      kill(shell_pid, SIGTERM);
+      waitpid(shell_pid, NULL, 0);
+      return;
     }
 
     // After the initial prompt, that's when user commands can be processed. 
     while(1){
-      size_t total = 0;
+      total = 0;
 
       if(!response(&msg, REQ_OK)) break;
 
@@ -252,20 +289,20 @@ void handleUserMessage(User* user) {
         break;
       }
 
-      memset(msg.data, 0, sizeof(msg.data));
+      memset(buffer, 0, sizeof(buffer));
       // Read from the shell until the next prompt is displayed.
-      while((bytes = read(parent_pipe[0], msg.data + total, BUFFER_SIZE - total - 1)) > 0){
+      while((bytes = read(parent_pipe[0], buffer + total, sizeof(buffer) - total - 1)) > 0){
         total+= bytes;
-        msg.data[total] = '\0';
+        buffer[total] = '\0';
 
-        if(strstr(msg.data, "[PROMPT]")) break;
+        if(strstr(buffer, "[PROMPT]")) break;
       }
 
-      char *occurence = strstr(msg.data, "[PROMPT]");
+      char *occurence = strstr(buffer, "[PROMPT]");
 
       if(occurence) *occurence = '\0';
 
-      sendMessage(fd, RES_OK | DATA, msg.data);
+      sendMessage(fd, RES_OK | DATA, buffer);
     }
   
     kill(shell_pid, SIGTERM);
@@ -283,31 +320,41 @@ void cleanup(){
 }
 
 int hasFlag(uint8_t status, uint8_t flag){
-  return (status & flag) == flag;
+return (status & flag) == flag;
 }
 
 int response(Message* msg, int expect_flags){
   int status = recvMessage(fd, msg);
-
+  
   // Check if the message was received successfully
-  if(status != MSG_OK){
-    printf("[Client]: Unable to reach the client\n");
+  if(status == MSG_MALFORMED || ntohs(msg->length) != strlen(msg->data)){
+    printf("[Client]: Malformed message received\n");
+    sendMessage(fd, msg->status | RES_ERR, "Malformed message received");
+    return 0;
+  }
+
+  if(status == MSG_ERROR){
+    printf("[Client]: Error receiving message\n");
+    sendMessage(fd, msg->status | RES_ERR, "Error message received");
+
+    return 0;
+  }
+
+  if(status == MSG_PEER_CLOSED){
+    printf("[Client]: Client closed the connection\n");
     return 0;
   }
 
   // Check for error flag in the message status
   if(hasFlag(msg->status, ERR_BIT)){
     printf("[Client]: %s\n", msg->data);
-    // cleanup();
-    // _exit(EXIT_FAILURE);
     return 0;
   }
 
   // Check for unexpected flags in the message status
   if(!hasFlag(msg->status, expect_flags)){
     printf("[Client]: Unexpected response from server\n");
-    // cleanup();
-    // _exit(EXIT_FAILURE);
+    sendMessage(fd, msg->status | RES_ERR, "Unexpected response");
     return 0;
   }
   
