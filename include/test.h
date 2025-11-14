@@ -3,11 +3,14 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "socket.h"
 #include "protocol.h"
 
 #define ASSERT(cond, msg) fprintf(stderr, "[Assertion %s]: %s for %s\n", (cond) ? "passed" : "failed", msg, __FILE_NAME__), exit(EXIT_SUCCESS);
+
+#define REQUIRE_MSG_VALID(m_status, msg) if((m_status) != MSG_OK){ASSERT(0, msg)}; 
 
 int hasFlag(uint8_t status, uint8_t flag){
   return (status & flag) == flag;
