@@ -12,30 +12,21 @@
 
 #define REQUIRE_MSG_VALID(m_status, msg) if((m_status) != MSG_OK){ASSERT(0, msg)}; 
 
-int hasFlag(uint8_t status, uint8_t flag){
-  return (status & flag) == flag;
-}
+/**
+ * Checks if a specific flag is set in the status byte.
+ * 
+ * @param status The status byte to check.
+ * @param flag The flag to check for.
+ * @return 1 if the flag is set, 0 otherwise.
+ */
+int hasFlag(uint8_t status, uint8_t flag);
 
-int debugMessage(Message* msg){
-  printf("Status: 0x%02X, Length: %u, Data: '%.*s'\n", msg->status, ntohs(msg->length), ntohs(msg->length), msg->data);
-  
-  printf("Flags set:");
-
-  if(hasFlag(msg->status, RES_BIT)) printf(" RES_BIT");
-  else printf(" REQ_BIT");
-
-  if(hasFlag(msg->status, ERR_BIT)) printf(" ERR_BIT");
-  else printf(" OK_BIT");
-  
-  if(hasFlag(msg->status, NAME)) printf(" NAME");
-  if(hasFlag(msg->status, PASSWORD)) printf(" PASSWORD");
-  if(hasFlag(msg->status, AUTH)) printf(" AUTH");
-  if(hasFlag(msg->status, DATA)) printf(" DATA");
-  if(hasFlag(msg->status, CLOSE)) printf(" CLOSE");
-
-  printf("\n");
-
-  return 1;
-}
+/**
+ * Prints the details of a Message structure for debugging purposes.
+ * 
+ * @param msg Pointer to the Message structure to debug.
+ * @return Always returns 1.
+ */
+int debugMessage(Message* msg);
 
 #endif

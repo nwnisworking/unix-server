@@ -48,15 +48,6 @@ void cleanup();
 void signalHandler();
 
 /**
- * Check if the given status byte has the specified flag set.
- * 
- * @param status The status byte to check.
- * @param flag The flag to check for.
- * @return 1 if the flag is set, 0 otherwise.
- */
-int hasFlag(uint8_t status, uint8_t flag);
-
-/**
  * Receive a message from the server and check for expected flags.
  * Exits the program if an error occurs or unexpected flags are received.
  * 
@@ -318,10 +309,6 @@ void cleanup(){
     close(fd);
     fd = -1;
   }
-}
-
-int hasFlag(uint8_t status, uint8_t flag){
-return (status & flag) == flag;
 }
 
 int response(Message* msg, int expect_flags){
