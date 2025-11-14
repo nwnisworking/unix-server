@@ -3,7 +3,7 @@
 
 /**
  * @file socketsignal.h
- * @brief Provides functions for installing and resetting signal handlers for socket operations.
+ * @brief Provides functions for installing signal handlers for socket operations.
  */
 
 #include <sys/types.h>
@@ -15,6 +15,8 @@
 
 /**
  * Installs custom signal handlers for termination signals.
+ * 
+ * @param handler Pointer to the signal handler function.
  */
 void installSignalHandler(void* handler);
 
