@@ -13,6 +13,8 @@
     "socket.h": "c",
     "cstdlib": "c",
     "protocol.h": "c",
-    "socketsignal.h": "c"
+    "socketsignal.h": "c",
+    "test.h": "c",
+    "unistd.h": "c"
   }
 }
