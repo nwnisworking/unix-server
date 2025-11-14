@@ -273,6 +273,7 @@ void handleUserMessage(User* user) {
 
       if(hasFlag(msg.status, CLOSE)){
         printf("[Server]: User '%s' disconnected the session\n", user->name);
+        sendMessage(fd, RES_OK | CLOSE, "Connection closed");
         break;
       }
 
