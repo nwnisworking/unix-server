@@ -1,5 +1,5 @@
 Script started on 2025-11-15 05:50:31+08:00 [TERM="xterm" TTY="/dev/pts/14" COLUMNS="120" LINES="30"]
-# c ./run_commands
+# ./run_commands
 Status: 0x84, Length: 17, Data: 'a command was run'
 Flags set: RES_BIT OK_BIT DATA
 Status: 0x84, Length: 18, Data: '/unix-server/build'

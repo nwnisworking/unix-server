@@ -10,8 +10,6 @@
 
 #define ASSERT(cond, msg) fprintf(stderr, "[Assertion %s]: %s for %s\n", (cond) ? "passed" : "failed", msg, __FILE_NAME__), exit(EXIT_SUCCESS);
 
-#define REQUIRE_MSG_VALID(m_status, msg) if((m_status) != MSG_OK){ASSERT(0, msg)}; 
-
 /**
  * Checks if a specific flag is set in the status byte.
  * 
