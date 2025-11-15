@@ -13,6 +13,7 @@
 #include "socket.h"
 #include "socketsignal.h"
 #include "protocol.h"
+#include "test.h"
 
 // This is a file descriptor for the socket 
 // which can either be a server or accepted client socket.
